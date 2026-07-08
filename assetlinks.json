@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "io.github.kendev690_cpu.runetriad",
+        "sha256_cert_fingerprints": ["CE:A1:AA:FB:AB:27:32:B6:EE:6B:A8:74:B2:48:56:CC:9E:C4:8D:8C:9B:2F:B1:2F:83:10:30:63:50:6C:CA:D6"]
+      }
+    }]

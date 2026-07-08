@@ -23,6 +23,6 @@
   "screenshots": [
     { "src": "screenshot-gameplay1.jpg", "sizes": "1220x2321", "type": "image/jpeg", "form_factor": "narrow" },
     { "src": "screenshot-gameplay2.jpg", "sizes": "1220x2327", "type": "image/jpeg", "form_factor": "narrow" },
-    { "src": "screenshot_gameplay3.jpg", "sizes": "1220x2334", "type": "image/jpeg", "form_factor": "narrow" }
+    { "src": "screenshot-gameplay3.jpg", "sizes": "1220x2334", "type": "image/jpeg", "form_factor": "narrow" }
   ]
 }

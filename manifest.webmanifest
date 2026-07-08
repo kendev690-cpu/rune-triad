@@ -19,10 +19,10 @@
     { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
     { "src": "icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
     { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
-  ]
+  ],
   "screenshots": [
-    { "src": "screenshot-gameplay1.jpg", "sizes": "412x915", "type": "image/jpg", "form_factor": "narrow" },
-    { "src": "screenshot-gameplay.jpg", "sizes": "412x915", "type": "image/jpg", "form_factor": "narrow" },
-    { "src": "screenshot_gameplay3.jpg", "sizes": "412x915", "type": "image/jpg", "form_factor": "narrow" }
+    { "src": "screenshot-gameplay1.jpg", "sizes": "1220x2334", "type": "image/jpg", "form_factor": "narrow" },
+    { "src": "screenshot-gameplay2.jpg", "sizes": "1220x2334", "type": "image/jpg", "form_factor": "narrow" },
+    { "src": "screenshot_gameplay3.jpg", "sizes": "1220x2334", "type": "image/jpg", "form_factor": "narrow" }
   ]
 }

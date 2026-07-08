@@ -689,6 +689,40 @@
   .lb-note{
     font-size:11.5px; color:rgba(236,223,192,0.55); margin:-8px 0 14px;
   }
+  .shop-coin-bar{
+    font-family:'Cinzel', serif; font-size:14px; color:var(--gold-brt);
+    text-align:center; margin:-6px 0 14px;
+  }
+  .shop-list{ margin-bottom:16px; }
+  .shop-row{
+    display:flex; align-items:center; gap:10px;
+    padding:10px 12px; border-radius:10px;
+    background:rgba(0,0,0,0.25); margin-bottom:8px;
+  }
+  .shop-row .ic{ font-size:22px; width:28px; text-align:center; flex-shrink:0; }
+  .shop-row .info{ flex:1; text-align:left; min-width:0; }
+  .shop-row .name{
+    font-family:'Cinzel', serif; font-size:13.5px; color:var(--parchment);
+    display:block;
+  }
+  .shop-row .owned{
+    font-size:11px; color:var(--teal); display:block; margin-top:2px;
+  }
+  .shop-row .buy-btn{
+    flex-shrink:0; font-family:'Cinzel', serif; font-weight:600;
+    background:linear-gradient(180deg, var(--gold-brt), var(--gold));
+    color:#2a1d10; border:none; border-radius:999px;
+    padding:8px 14px; font-size:12.5px; cursor:pointer;
+    box-shadow:0 2px 0 #8a6a24; white-space:nowrap;
+  }
+  .shop-row .buy-btn:active{ transform:translateY(1px); box-shadow:0 1px 0 #8a6a24; }
+  .shop-row .buy-btn:disabled{
+    opacity:0.4; cursor:default; background:linear-gradient(180deg,#8a8a8a,#666);
+    box-shadow:0 2px 0 #444;
+  }
+  .shop-note{
+    font-size:11.5px; color:rgba(236,223,192,0.55); margin:-8px 0 14px;
+  }
 </style>
 </head>
 <body>
@@ -710,6 +744,7 @@
         <button class="menu-btn" id="btnNewGame">✦ New Game</button>
         <button class="menu-btn ghost" id="btnHowToHome">❔ How to Play</button>
         <button class="menu-btn ghost" id="btnStatsHome">📊 Stats</button>
+        <button class="menu-btn ghost" id="btnShopHome">🛒 Shop</button>
         <button class="menu-btn ghost" id="btnLeaderboardHome">🏆 Leaderboard</button>
         <button class="menu-btn ghost" id="btnSettingsHome">⚙ Settings</button>
       </div>
@@ -816,6 +851,17 @@
   </div>
 </div>
 
+<div class="modal-bg" id="shopBg">
+  <div class="modal">
+    <div class="glyph">🛒</div>
+    <h2>Rune Shop</h2>
+    <p class="shop-note">Stock up before your next relic. Purchases here apply only to the relic you're about to start.</p>
+    <div class="shop-coin-bar"><span class="icon">💰</span> <span id="shopCoinCount">0</span> gold</div>
+    <div class="shop-list" id="shopList"></div>
+    <button id="btnCloseShop">Close</button>
+  </div>
+</div>
+
 <div class="modal-bg" id="confirmBg">
   <div class="modal">
     <div class="glyph" id="confirmGlyph">❓</div>
@@ -835,6 +881,7 @@
     <div class="home-buttons" style="margin:6px auto 0;">
       <button class="menu-btn primary" id="btnResume">▶ Continue</button>
       <button class="menu-btn" id="btnPauseRestart">↻ Restart Relic</button>
+      <button class="menu-btn ghost" id="btnPauseShop">🛒 Shop</button>
       <button class="menu-btn ghost" id="btnPauseSettings">⚙ Settings</button>
       <button class="menu-btn ghost" id="btnPauseHome">🏠 Home</button>
     </div>
@@ -1270,6 +1317,12 @@
   })();
   const FREE_POWERUPS = { undo:2, shuffle:2, bomb:2, hint:2 };
   const POWER_COST = { undo:15, shuffle:20, bomb:20, hint:10 };
+  const SHOP_ITEMS = [
+    { kind:'undo',    icon:'↩',  label:'Recall',    price:10 },
+    { kind:'shuffle', icon:'🌀', label:'Shuffle',   price:14 },
+    { kind:'bomb',    icon:'💥', label:'Banish',    price:14 },
+    { kind:'hint',    icon:'✨', label:'Foresight', price:7  },
+  ];
 
   const SHAPES = [
     // sword-hilt cross
@@ -1296,6 +1349,7 @@
     level:1, coins:50,
     playerId:null, playerName:null,
     dailyBonusDate:null,
+    shopStock:{ undo:0, shuffle:0, bomb:0, hint:0 },
     stats:{ relicsCleared:0, bestLevel:1, totalMatches:0, totalCoinsEarned:0 }
   };
   let layers=[], tray=[], history=[];
@@ -1317,6 +1371,7 @@
           state.dailyBonusDate=p.dailyBonusDate||null;
           state.playerId=p.playerId||null;
           state.playerName=p.playerName||null;
+          if(p.shopStock){ state.shopStock = Object.assign(state.shopStock, p.shopStock); }
           if(p.stats){ state.stats = Object.assign(state.stats, p.stats); }
         }catch(e){}
       }
@@ -1335,6 +1390,7 @@
       level:state.level, coins:state.coins, muted:!!state.muted,
       dailyBonusDate:state.dailyBonusDate,
       playerId:state.playerId, playerName:state.playerName,
+      shopStock:state.shopStock,
       stats:state.stats
     }), false).catch(()=>{});
   }
@@ -1748,6 +1804,9 @@
       nextHid=session.nextHid||1;
     } else {
       generateLevel(lvl);
+      Object.keys(state.shopStock).forEach(k=>{ powerLeft[k] += (state.shopStock[k]||0); });
+      state.shopStock = { undo:0, shuffle:0, bomb:0, hint:0 };
+      saveProgress();
       saveSession();
     }
     renderBoard(); renderTray(); renderStats();
@@ -2001,6 +2060,45 @@
   $("btnLeaderboardHome").addEventListener('click', openLeaderboard);
   $("btnCloseLeaderboard").addEventListener('click', ()=>{ $("leaderboardBg").classList.remove('show'); });
 
+  // --- shop: pre-run power-up stock, purchased with gold, applied to the next relic only ---
+  let shopOpenedFromPause=false;
+  function renderShop(){
+    $("shopCoinCount").textContent = state.coins;
+    const list = $("shopList");
+    list.innerHTML='';
+    SHOP_ITEMS.forEach(item=>{
+      const owned = state.shopStock[item.kind]||0;
+      const afford = state.coins>=item.price;
+      const row=document.createElement('div');
+      row.className='shop-row';
+      row.innerHTML =
+        '<span class="ic">'+item.icon+'</span>'+
+        '<span class="info">'+
+          '<span class="name">'+item.label+'</span>'+
+          '<span class="owned">+'+owned+' stocked for next relic</span>'+
+        '</span>'+
+        '<button class="buy-btn"'+(afford?'':' disabled')+'>+1 for '+item.price+'g</button>';
+      row.querySelector('.buy-btn').addEventListener('click', ()=>{
+        if(state.coins<item.price) return;
+        state.coins -= item.price;
+        state.shopStock[item.kind] = (state.shopStock[item.kind]||0) + 1;
+        saveProgress();
+        renderShop();
+        refreshHomeBadge();
+      });
+      list.appendChild(row);
+    });
+  }
+  $("btnShopHome").addEventListener('click', ()=>{
+    shopOpenedFromPause=false;
+    renderShop();
+    $("shopBg").classList.add('show');
+  });
+  $("btnCloseShop").addEventListener('click', ()=>{
+    $("shopBg").classList.remove('show');
+    if(shopOpenedFromPause){ shopOpenedFromPause=false; $("pauseBg").classList.add('show'); }
+  });
+
   // --- daily bonus ---
   function todayStr(){ return new Date().toISOString().slice(0,10); }
   function maybeShowDailyBonus(){
@@ -2048,6 +2146,12 @@
     $("pauseBg").classList.remove('show');
     SoundEngine.resumeMusicOnly();
     startLevel(state.level);
+  });
+  $("btnPauseShop").addEventListener('click', ()=>{
+    $("pauseBg").classList.remove('show');
+    shopOpenedFromPause=true;
+    renderShop();
+    $("shopBg").classList.add('show');
   });
   $("btnPauseSettings").addEventListener('click', ()=>{
     $("pauseBg").classList.remove('show');

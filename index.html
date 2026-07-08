@@ -625,6 +625,15 @@
     box-shadow:0 3px 0 #8a6a24;
   }
   .modal button:active{ transform:translateY(2px); box-shadow:0 1px 0 #8a6a24; }
+  .modal button.ad-btn{
+    display:block; width:100%; margin:0 0 10px;
+    background:linear-gradient(180deg, #4fc3d9, #2a93a8);
+    color:#eafcff; box-shadow:0 3px 0 #176a78;
+  }
+  .modal button.ad-btn:active{ box-shadow:0 1px 0 #176a78; }
+  .modal button.ad-btn:disabled{
+    opacity:0.5; cursor:default;
+  }
 
   /* stats / leaderboard / name input extras */
   .name-input-row{
@@ -761,6 +770,7 @@
     <h2 id="modalTitle">Relic Cleared!</h2>
     <p id="modalText">You have unearthed every rune.</p>
     <div class="reward" id="modalReward"></div>
+    <button id="modalAdBtn" class="ad-btn" style="display:none;">▶ Watch Ad for Bonus Gold</button>
     <button id="modalBtn">Continue</button>
   </div>
 </div>
@@ -1672,7 +1682,8 @@
   function winLevel(){
     boardLocked=true;
     SoundEngine.sfxWin();
-    const bonus = 50 + state.level*5;
+    const bonus = 20 + state.level*3;
+    const adBonus = bonus; // watching an ad doubles the relic reward
     state.coins += bonus;
     state.stats.relicsCleared += 1;
     state.stats.totalCoinsEarned += bonus;
@@ -1686,7 +1697,31 @@
     $("modalReward").textContent="+ "+bonus+" gold";
     $("modalBtn").textContent="Next Relic";
     $("modalBtn").onclick=()=>{ closeModal(); startLevel(state.level); };
+
+    const adBtn = $("modalAdBtn");
+    adBtn.style.display = "block";
+    adBtn.disabled = false;
+    adBtn.textContent = "▶ Watch Ad for +"+adBonus+" Gold";
+    adBtn.onclick = ()=>{
+      adBtn.disabled = true;
+      adBtn.textContent = "Loading ad...";
+      showRewardedAd(()=>{
+        state.coins += adBonus;
+        state.stats.totalCoinsEarned += adBonus;
+        renderStats(); saveProgress();
+        $("coinCount").textContent = state.coins;
+        $("modalReward").textContent = "+ "+(bonus+adBonus)+" gold";
+        adBtn.textContent = "Bonus Claimed ✓";
+      });
+    };
     openModal();
+  }
+
+  // Placeholder rewarded-ad flow. Swap the inside of this function for a real
+  // ad SDK call (e.g. AdMob rewarded ad) once one is integrated. It must call
+  // onComplete() only after the player has actually finished watching the ad.
+  function showRewardedAd(onComplete){
+    setTimeout(onComplete, 1500);
   }
 
   function loseLevel(){
@@ -1696,6 +1731,7 @@
     $("modalTitle").textContent="Pouch Overflow!";
     $("modalText").textContent="Your pouch spilled over before relic "+state.level+" was cleared.";
     $("modalReward").textContent="";
+    $("modalAdBtn").style.display="none";
     $("modalBtn").textContent="Retry Relic";
     $("modalBtn").onclick=()=>{ closeModal(); startLevel(state.level); };
     openModal();
@@ -1873,6 +1909,7 @@
     $("modalTitle").textContent="How to Play";
     $("modalText").textContent="Tap glowing runestones to draw them into your pouch. Dim stones are buried beneath others — clear what's on top first. Collect three matching runes in a row and they banish. Clear every stone to win. If your pouch overflows with no match, the relic is lost.";
     $("modalReward").textContent="";
+    $("modalAdBtn").style.display="none";
     $("modalBtn").textContent="Got it";
     $("modalBtn").onclick=()=>{ closeModal(); };
     openModal();
@@ -1974,6 +2011,7 @@
     $("modalTitle").textContent="Daily Blessing";
     $("modalText").textContent="The runes have blessed your return. A gift awaits.";
     $("modalReward").textContent="+ "+amount+" gold";
+    $("modalAdBtn").style.display="none";
     $("modalBtn").textContent="Claim";
     $("modalBtn").onclick=()=>{
       state.coins += amount;

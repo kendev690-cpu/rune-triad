@@ -723,6 +723,39 @@
   .shop-note{
     font-size:11.5px; color:rgba(236,223,192,0.55); margin:-8px 0 14px;
   }
+  .shop-divider{
+    font-family:'Cinzel Decorative', serif; color:var(--gold-brt);
+    font-size:15px; text-align:center;
+    margin:18px 0 8px; padding-top:14px;
+    border-top:1px solid rgba(236,223,192,0.18);
+  }
+  .coinpack-list{ margin-bottom:16px; }
+  .coinpack-row{
+    display:flex; align-items:center; gap:10px;
+    padding:10px 12px; border-radius:10px;
+    background:rgba(0,0,0,0.25); margin-bottom:8px;
+  }
+  .coinpack-row .ic{ font-size:22px; width:28px; text-align:center; flex-shrink:0; }
+  .coinpack-row .info{ flex:1; text-align:left; min-width:0; }
+  .coinpack-row .name{
+    font-family:'Cinzel', serif; font-size:13.5px; color:var(--parchment);
+    display:block;
+  }
+  .coinpack-row .amount{
+    font-size:11px; color:var(--teal); display:block; margin-top:2px;
+  }
+  .coinpack-row .buy-btn{
+    flex-shrink:0; font-family:'Cinzel', serif; font-weight:600;
+    background:linear-gradient(180deg, #4fc3d9, #2a93a8);
+    color:#eafcff; border:none; border-radius:999px;
+    padding:8px 14px; font-size:12.5px; cursor:pointer;
+    box-shadow:0 2px 0 #176a78; white-space:nowrap;
+  }
+  .coinpack-row .buy-btn:active{ transform:translateY(1px); box-shadow:0 1px 0 #176a78; }
+  .coinpack-row .buy-btn:disabled{
+    opacity:0.4; cursor:default; background:linear-gradient(180deg,#8a8a8a,#666);
+    box-shadow:0 2px 0 #444;
+  }
 </style>
 </head>
 <body>
@@ -858,6 +891,9 @@
     <p class="shop-note">Stock up before your next relic. Purchases here apply only to the relic you're about to start.</p>
     <div class="shop-coin-bar"><span class="icon">💰</span> <span id="shopCoinCount">0</span> gold</div>
     <div class="shop-list" id="shopList"></div>
+    <div class="shop-divider">Buy Gold</div>
+    <p class="shop-note" id="coinPackNote">Loading store…</p>
+    <div class="coinpack-list" id="coinPackList"></div>
     <button id="btnCloseShop">Close</button>
   </div>
 </div>
@@ -2092,8 +2128,100 @@
   $("btnShopHome").addEventListener('click', ()=>{
     shopOpenedFromPause=false;
     renderShop();
+    renderCoinPacks();
     $("shopBg").classList.add('show');
   });
+
+  // --- real-money coin packs, via Chrome's Digital Goods API (the standard
+  // bridge Google provides for TWAs to use Google Play Billing) ---
+  const COIN_PACKS = [
+    { id:'coins_small',  icon:'👛', label:"Small Pouch",   coins:300,  fallbackPrice:'$0.99' },
+    { id:'coins_medium', icon:'💰', label:"Golden Chest",  coins:1200, fallbackPrice:'$2.99' },
+    { id:'coins_large',  icon:'🏺', label:"Dragon's Hoard",coins:2500, fallbackPrice:'$4.99' },
+  ];
+  const BILLING_METHOD = 'https://play.google.com/billing';
+  let billingService = null;
+  let billingDetails = {}; // id -> { title, price: {value, currency} }
+  let billingReady = false;
+
+  async function initBilling(){
+    try{
+      if(!window.getDigitalGoodsService){ renderCoinPacks(); return; }
+      billingService = await window.getDigitalGoodsService(BILLING_METHOD);
+      if(!billingService){ renderCoinPacks(); return; }
+      const ids = COIN_PACKS.map(p=>p.id);
+      const details = await billingService.getDetails(ids);
+      details.forEach(d=>{ billingDetails[d.itemId] = d; });
+      billingReady = true;
+      // Credit and consume any purchase that completed but never got acknowledged
+      // (e.g. app was killed mid-purchase). Consumables must be consumed or the
+      // player can never buy that pack again.
+      const pending = await billingService.listPurchases();
+      for(const purchase of pending){
+        const pack = COIN_PACKS.find(p=>p.id===purchase.itemId);
+        if(pack){
+          state.coins += pack.coins;
+          saveProgress();
+          await billingService.consume(purchase.purchaseToken);
+        }
+      }
+    } catch(e){
+      billingReady = false;
+    }
+    renderCoinPacks();
+  }
+
+  function renderCoinPacks(){
+    const list = $("coinPackList");
+    const note = $("coinPackNote");
+    if(!list) return;
+    list.innerHTML='';
+    if(billingReady){
+      note.textContent = "Purchases are billed through Google Play.";
+    } else {
+      note.textContent = "Real purchases only work inside the installed Play Store app — prices shown are estimates.";
+    }
+    COIN_PACKS.forEach(pack=>{
+      const detail = billingDetails[pack.id];
+      const priceLabel = detail ? (detail.price.value+' '+detail.price.currency) : pack.fallbackPrice;
+      const row=document.createElement('div');
+      row.className='coinpack-row';
+      row.innerHTML =
+        '<span class="ic">'+pack.icon+'</span>'+
+        '<span class="info">'+
+          '<span class="name">'+pack.label+'</span>'+
+          '<span class="amount">'+pack.coins.toLocaleString()+' gold</span>'+
+        '</span>'+
+        '<button class="buy-btn"'+(billingReady?'':' disabled')+'>'+priceLabel+'</button>';
+      row.querySelector('.buy-btn').addEventListener('click', ()=>buyCoinPack(pack));
+      list.appendChild(row);
+    });
+  }
+
+  async function buyCoinPack(pack){
+    if(!billingReady) return;
+    try{
+      const request = new PaymentRequest(
+        [{ supportedMethods: BILLING_METHOD, data:{ sku: pack.id } }],
+        // Play Console's configured price is authoritative; this total is
+        // required by the Payment Request spec but is not what the player is charged.
+        { total:{ label: pack.label, amount:{ currency:'USD', value:'0' } } }
+      );
+      const response = await request.show();
+      await response.complete('success');
+      await billingService.consume(response.details.purchaseToken);
+      state.coins += pack.coins;
+      state.stats.totalCoinsEarned += pack.coins;
+      saveProgress();
+      renderShop();
+      renderCoinPacks();
+      refreshHomeBadge();
+      $("shopCoinCount").textContent = state.coins;
+    } catch(e){
+      // Player cancelled the payment sheet, or purchase failed — no charge, nothing to credit.
+    }
+  }
+
   $("btnCloseShop").addEventListener('click', ()=>{
     $("shopBg").classList.remove('show');
     if(shopOpenedFromPause){ shopOpenedFromPause=false; $("pauseBg").classList.add('show'); }
@@ -2151,6 +2279,7 @@
     $("pauseBg").classList.remove('show');
     shopOpenedFromPause=true;
     renderShop();
+    renderCoinPacks();
     $("shopBg").classList.add('show');
   });
   $("btnPauseSettings").addEventListener('click', ()=>{
@@ -2173,6 +2302,7 @@
     showScreen('homeScreen');
     maybeShowDailyBonus();
     hideSplash();
+    initBilling();
   });
 
   function hideSplash(){

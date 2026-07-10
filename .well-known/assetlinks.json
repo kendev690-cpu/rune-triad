@@ -3,6 +3,6 @@
       "target": {
         "namespace": "android_app",
         "package_name": "io.github.kendev690_cpu.runetriad",
-        "sha256_cert_fingerprints": ["7D:01:C1:AA:AD:70:AB:B1:5E:B7:A8:3C:DD:BD:B0:16:8E:C6:0C:68:95:01:33:C4:2E:F4:C5:69:B5:6D:C7:CC"]
+        "sha256_cert_fingerprints": ["59:BB:7A:C9:F3:ED:B8:BF:28:A7:BE:59:DA:95:75:1F:E3:9E:20:C3:2E:D7:5F:16:66:DA:EB:57:8C:91:16:63"]
       }
     }]

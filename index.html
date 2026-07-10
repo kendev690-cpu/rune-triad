@@ -458,6 +458,26 @@
   .layer-2 .tile-icon{ color:#f3e9d2; text-shadow:0 0 8px var(--ember), 0 0 3px #fff; }
   .layer-3 .tile-shell{ border-color:var(--gold); box-shadow:0 5px 4px rgba(0,0,0,0.5), 0 10px 16px rgba(0,0,0,0.4), 0 0 16px rgba(215,173,79,0.7), inset 0 2px 3px rgba(255,255,255,0.35), inset 0 -6px 10px rgba(0,0,0,0.45); }
   .layer-3 .tile-icon{ color:#f3e9d2; text-shadow:0 0 8px var(--gold), 0 0 3px #fff; }
+
+  /* --- cosmetic rune skins: override tile material only; layer glow colors above still apply --- */
+  #board.skin-obsidian .tile-shell{
+    background:
+      radial-gradient(60% 45% at 32% 22%, rgba(255,255,255,0.25), transparent 60%),
+      radial-gradient(90% 70% at 60% 80%, rgba(0,0,0,0.55), transparent 60%),
+      linear-gradient(150deg, #2a2440, #171129 50%, #0a0715);
+  }
+  #board.skin-jade .tile-shell{
+    background:
+      radial-gradient(60% 45% at 32% 22%, rgba(255,255,255,0.3), transparent 60%),
+      radial-gradient(90% 70% at 60% 80%, rgba(0,0,0,0.4), transparent 60%),
+      linear-gradient(150deg, #2f6e52, #1c4a37 50%, #0f2e22);
+  }
+  #board.skin-gilded .tile-shell{
+    background:
+      radial-gradient(60% 45% at 32% 22%, rgba(255,255,255,0.4), transparent 60%),
+      radial-gradient(90% 70% at 60% 80%, rgba(0,0,0,0.3), transparent 60%),
+      linear-gradient(150deg, #8a6d2e, #5c4419 50%, #362a0f);
+  }
   .layer-4 .tile-shell{ border-color:var(--danger); box-shadow:0 5px 4px rgba(0,0,0,0.5), 0 10px 16px rgba(0,0,0,0.4), 0 0 16px rgba(193,75,75,0.65), inset 0 2px 3px rgba(255,255,255,0.35), inset 0 -6px 10px rgba(0,0,0,0.45); }
   .layer-4 .tile-icon{ color:#f3e9d2; text-shadow:0 0 8px var(--danger), 0 0 3px #fff; }
   .layer-5 .tile-shell{ border-color:#5fb3e0; box-shadow:0 5px 4px rgba(0,0,0,0.5), 0 10px 16px rgba(0,0,0,0.4), 0 0 16px rgba(95,179,224,0.7), inset 0 2px 3px rgba(255,255,255,0.35), inset 0 -6px 10px rgba(0,0,0,0.45); }
@@ -756,6 +776,17 @@
     opacity:0.4; cursor:default; background:linear-gradient(180deg,#8a8a8a,#666);
     box-shadow:0 2px 0 #444;
   }
+  .shop-row .buy-btn.owned{
+    background:linear-gradient(180deg, #4fc3d9, #2a93a8); color:#eafcff; box-shadow:0 2px 0 #176a78;
+  }
+  .shop-row .buy-btn.equipped{
+    background:linear-gradient(180deg, #6fdc8a, #349a54); color:#08240f; box-shadow:0 2px 0 #1f6b34;
+    opacity:1; cursor:default;
+  }
+  .shop-row .swatch{
+    width:26px; height:26px; border-radius:50%; flex-shrink:0;
+    border:1.5px solid rgba(236,223,192,0.4);
+  }
 </style>
 </head>
 <body>
@@ -894,6 +925,12 @@
     <div class="shop-divider">Buy Gold</div>
     <p class="shop-note" id="coinPackNote">Loading store…</p>
     <div class="coinpack-list" id="coinPackList"></div>
+    <div class="shop-divider">Rune Skins</div>
+    <p class="shop-note" id="skinNote">Cosmetic only — no gameplay effect. Owned forever once bought.</p>
+    <div class="shop-list" id="skinList"></div>
+    <div class="shop-divider">Remove Ads</div>
+    <p class="shop-note" id="premiumNote">Loading store…</p>
+    <div class="shop-list" id="premiumList"></div>
     <button id="btnCloseShop">Close</button>
   </div>
 </div>
@@ -1386,6 +1423,8 @@
     playerId:null, playerName:null,
     dailyBonusDate:null,
     shopStock:{ undo:0, shuffle:0, bomb:0, hint:0 },
+    ownedSkins:['skin_default'], equippedSkin:'skin_default',
+    isPremium:false,
     stats:{ relicsCleared:0, bestLevel:1, totalMatches:0, totalCoinsEarned:0 }
   };
   let layers=[], tray=[], history=[];
@@ -1408,6 +1447,9 @@
           state.playerId=p.playerId||null;
           state.playerName=p.playerName||null;
           if(p.shopStock){ state.shopStock = Object.assign(state.shopStock, p.shopStock); }
+          if(p.ownedSkins){ state.ownedSkins = p.ownedSkins; }
+          if(p.equippedSkin){ state.equippedSkin = p.equippedSkin; }
+          if(p.isPremium){ state.isPremium = p.isPremium; }
           if(p.stats){ state.stats = Object.assign(state.stats, p.stats); }
         }catch(e){}
       }
@@ -1427,6 +1469,8 @@
       dailyBonusDate:state.dailyBonusDate,
       playerId:state.playerId, playerName:state.playerName,
       shopStock:state.shopStock,
+      ownedSkins:state.ownedSkins, equippedSkin:state.equippedSkin,
+      isPremium:state.isPremium,
       stats:state.stats
     }), false).catch(()=>{});
   }
@@ -1771,6 +1815,12 @@
     }
   }
 
+  const INTERSTITIAL_EVERY_N_RELICS = 1;
+  // Real ads aren't wired up yet (needs a native ad bridge — see showRewardedAd
+  // and showInterstitialAd below). Keep this false until that's actually built,
+  // so players never see a "watch ad" button that doesn't show a real ad.
+  const REWARDED_AD_BUTTON_ENABLED = false;
+
   function winLevel(){
     boardLocked=true;
     SoundEngine.sfxWin();
@@ -1788,25 +1838,45 @@
     $("modalText").textContent="Every rune has been unearthed from relic "+(state.level-1)+".";
     $("modalReward").textContent="+ "+bonus+" gold";
     $("modalBtn").textContent="Next Relic";
-    $("modalBtn").onclick=()=>{ closeModal(); startLevel(state.level); };
+    $("modalBtn").onclick=()=>{
+      closeModal();
+      const dueForAd = !state.isPremium && (state.stats.relicsCleared % INTERSTITIAL_EVERY_N_RELICS === 0);
+      if(dueForAd){
+        showInterstitialAd(()=>{ startLevel(state.level); });
+      } else {
+        startLevel(state.level);
+      }
+    };
 
     const adBtn = $("modalAdBtn");
-    adBtn.style.display = "block";
-    adBtn.disabled = false;
-    adBtn.textContent = "▶ Watch Ad for +"+adBonus+" Gold";
-    adBtn.onclick = ()=>{
-      adBtn.disabled = true;
-      adBtn.textContent = "Loading ad...";
-      showRewardedAd(()=>{
-        state.coins += adBonus;
-        state.stats.totalCoinsEarned += adBonus;
-        renderStats(); saveProgress();
-        $("coinCount").textContent = state.coins;
-        $("modalReward").textContent = "+ "+(bonus+adBonus)+" gold";
-        adBtn.textContent = "Bonus Claimed ✓";
-      });
-    };
+    if(state.isPremium || !REWARDED_AD_BUTTON_ENABLED){
+      adBtn.style.display = "none";
+    } else {
+      adBtn.style.display = "block";
+      adBtn.disabled = false;
+      adBtn.textContent = "▶ Watch Ad for +"+adBonus+" Gold";
+      adBtn.onclick = ()=>{
+        adBtn.disabled = true;
+        adBtn.textContent = "Loading ad...";
+        showRewardedAd(()=>{
+          state.coins += adBonus;
+          state.stats.totalCoinsEarned += adBonus;
+          renderStats(); saveProgress();
+          $("coinCount").textContent = state.coins;
+          $("modalReward").textContent = "+ "+(bonus+adBonus)+" gold";
+          adBtn.textContent = "Bonus Claimed ✓";
+        });
+      };
+    }
     openModal();
+  }
+
+  // Placeholder interstitial-ad flow, shown between relics every few wins for
+  // non-premium players. Swap the inside for a real ad SDK call once a native
+  // ad bridge exists (see showRewardedAd below for the same caveat). Must call
+  // onComplete() once the ad has actually finished/closed.
+  function showInterstitialAd(onComplete){
+    setTimeout(onComplete, 1500);
   }
 
   // Placeholder rewarded-ad flow. Swap the inside of this function for a real
@@ -2129,6 +2199,8 @@
     shopOpenedFromPause=false;
     renderShop();
     renderCoinPacks();
+    renderSkinShop();
+    renderPremiumShop();
     $("shopBg").classList.add('show');
   });
 
@@ -2139,6 +2211,13 @@
     { id:'coins_medium', icon:'💰', label:"Golden Chest",  coins:1200, fallbackPrice:'$2.99' },
     { id:'coins_large',  icon:'🏺', label:"Dragon's Hoard",coins:2500, fallbackPrice:'$4.99' },
   ];
+  const SKINS = [
+    { id:'skin_default',  label:'Stone (Default)', className:'',              color:'#4a4d57', free:true },
+    { id:'skin_obsidian', label:'Obsidian',         className:'skin-obsidian',color:'#171129', fallbackPrice:'$1.99' },
+    { id:'skin_jade',      label:'Jade',            className:'skin-jade',    color:'#1c4a37', fallbackPrice:'$1.99' },
+    { id:'skin_gilded',    label:'Gilded',          className:'skin-gilded',  color:'#5c4419', fallbackPrice:'$2.99' },
+  ];
+  const PREMIUM_PASS = { id:'premium_no_ads', label:'Premium Pass', fallbackPrice:'$3.99' };
   const BILLING_METHOD = 'https://play.google.com/billing';
   let billingService = null;
   let billingDetails = {}; // id -> { title, price: {value, currency} }
@@ -2146,16 +2225,19 @@
 
   async function initBilling(){
     try{
-      if(!window.getDigitalGoodsService){ renderCoinPacks(); return; }
+      if(!window.getDigitalGoodsService){ renderCoinPacks(); renderSkinShop(); renderPremiumShop(); return; }
       billingService = await window.getDigitalGoodsService(BILLING_METHOD);
-      if(!billingService){ renderCoinPacks(); return; }
-      const ids = COIN_PACKS.map(p=>p.id);
+      if(!billingService){ renderCoinPacks(); renderSkinShop(); renderPremiumShop(); return; }
+      const skinIds = SKINS.filter(s=>!s.free).map(s=>s.id);
+      const ids = COIN_PACKS.map(p=>p.id).concat(skinIds).concat([PREMIUM_PASS.id]);
       const details = await billingService.getDetails(ids);
       details.forEach(d=>{ billingDetails[d.itemId] = d; });
       billingReady = true;
-      // Credit and consume any purchase that completed but never got acknowledged
-      // (e.g. app was killed mid-purchase). Consumables must be consumed or the
-      // player can never buy that pack again.
+      // Credit/consume any coin pack purchase that completed but never got
+      // acknowledged (e.g. app was killed mid-purchase), and restore ownership
+      // of any skin or the premium pass already bought (both are never
+      // consumed, so they persist here forever once purchased — this is how
+      // we detect "already owns it").
       const pending = await billingService.listPurchases();
       for(const purchase of pending){
         const pack = COIN_PACKS.find(p=>p.id===purchase.itemId);
@@ -2163,12 +2245,25 @@
           state.coins += pack.coins;
           saveProgress();
           await billingService.consume(purchase.purchaseToken);
+          continue;
+        }
+        const skin = SKINS.find(s=>s.id===purchase.itemId);
+        if(skin && !state.ownedSkins.includes(skin.id)){
+          state.ownedSkins.push(skin.id);
+          saveProgress();
+          continue;
+        }
+        if(purchase.itemId===PREMIUM_PASS.id && !state.isPremium){
+          state.isPremium = true;
+          saveProgress();
         }
       }
     } catch(e){
       billingReady = false;
     }
     renderCoinPacks();
+    renderSkinShop();
+    renderPremiumShop();
   }
 
   function renderCoinPacks(){
@@ -2219,6 +2314,118 @@
       $("shopCoinCount").textContent = state.coins;
     } catch(e){
       // Player cancelled the payment sheet, or purchase failed — no charge, nothing to credit.
+    }
+  }
+
+  function applyEquippedSkin(){
+    const board = $("board");
+    if(!board) return;
+    SKINS.forEach(s=>{ if(s.className) board.classList.remove(s.className); });
+    const equipped = SKINS.find(s=>s.id===state.equippedSkin);
+    if(equipped && equipped.className) board.classList.add(equipped.className);
+  }
+
+  function renderSkinShop(){
+    const list = $("skinList");
+    if(!list) return;
+    list.innerHTML='';
+    SKINS.forEach(skin=>{
+      const owned = skin.free || state.ownedSkins.includes(skin.id);
+      const equipped = state.equippedSkin===skin.id;
+      const detail = billingDetails[skin.id];
+      const priceLabel = detail ? (detail.price.value+' '+detail.price.currency) : skin.fallbackPrice;
+      let btnLabel, btnClass, disabled=false;
+      if(equipped){ btnLabel='Equipped'; btnClass='equipped'; disabled=true; }
+      else if(owned){ btnLabel='Equip'; btnClass='owned'; }
+      else { btnLabel=priceLabel; btnClass=''; disabled=!billingReady; }
+      const row=document.createElement('div');
+      row.className='shop-row';
+      row.innerHTML =
+        '<span class="swatch" style="background:'+skin.color+';"></span>'+
+        '<span class="info">'+
+          '<span class="name">'+skin.label+'</span>'+
+          '<span class="owned">'+(owned? (equipped?'Equipped':'Owned') : 'Cosmetic only')+'</span>'+
+        '</span>'+
+        '<button class="buy-btn '+btnClass+'"'+(disabled?' disabled':'')+'>'+btnLabel+'</button>';
+      row.querySelector('.buy-btn').addEventListener('click', ()=>buyOrEquipSkin(skin));
+      list.appendChild(row);
+    });
+  }
+
+  async function buyOrEquipSkin(skin){
+    const owned = skin.free || state.ownedSkins.includes(skin.id);
+    if(owned){
+      if(state.equippedSkin===skin.id) return;
+      state.equippedSkin = skin.id;
+      saveProgress();
+      applyEquippedSkin();
+      renderSkinShop();
+      return;
+    }
+    if(!billingReady) return;
+    try{
+      const request = new PaymentRequest(
+        [{ supportedMethods: BILLING_METHOD, data:{ sku: skin.id } }],
+        { total:{ label: skin.label, amount:{ currency:'USD', value:'0' } } }
+      );
+      const response = await request.show();
+      await response.complete('success');
+      // Skins are non-consumable — no consume() call, so listPurchases() will
+      // keep showing it as owned (used above to restore ownership on reinstall).
+      if(!state.ownedSkins.includes(skin.id)) state.ownedSkins.push(skin.id);
+      state.equippedSkin = skin.id;
+      saveProgress();
+      applyEquippedSkin();
+      renderSkinShop();
+    } catch(e){
+      // Player cancelled — no charge, nothing to unlock.
+    }
+  }
+
+  function renderPremiumShop(){
+    const list = $("premiumList");
+    const note = $("premiumNote");
+    if(!list) return;
+    list.innerHTML='';
+    if(state.isPremium){
+      note.textContent = "You've gone premium — interstitial ads are permanently off.";
+    } else if(billingReady){
+      note.textContent = "One-time purchase. Removes ads between relics — the optional rewarded-ad button stays available if you still want bonus gold.";
+    } else {
+      note.textContent = "Real purchases only work inside the installed Play Store app — price shown is an estimate.";
+    }
+    const detail = billingDetails[PREMIUM_PASS.id];
+    const priceLabel = detail ? (detail.price.value+' '+detail.price.currency) : PREMIUM_PASS.fallbackPrice;
+    const row=document.createElement('div');
+    row.className='shop-row';
+    row.innerHTML =
+      '<span class="ic">🚫📺</span>'+
+      '<span class="info">'+
+        '<span class="name">'+PREMIUM_PASS.label+'</span>'+
+        '<span class="owned">'+(state.isPremium?'Active':'No forced ads between relics')+'</span>'+
+      '</span>'+
+      '<button class="buy-btn'+(state.isPremium?' equipped':'')+'"'+((state.isPremium||!billingReady)?' disabled':'')+'>'+(state.isPremium?'Active':priceLabel)+'</button>';
+    if(!state.isPremium){
+      row.querySelector('.buy-btn').addEventListener('click', buyPremiumPass);
+    }
+    list.appendChild(row);
+  }
+
+  async function buyPremiumPass(){
+    if(!billingReady || state.isPremium) return;
+    try{
+      const request = new PaymentRequest(
+        [{ supportedMethods: BILLING_METHOD, data:{ sku: PREMIUM_PASS.id } }],
+        { total:{ label: PREMIUM_PASS.label, amount:{ currency:'USD', value:'0' } } }
+      );
+      const response = await request.show();
+      await response.complete('success');
+      // Non-consumable — no consume() call; listPurchases() keeps confirming ownership.
+      state.isPremium = true;
+      saveProgress();
+      renderPremiumShop();
+    } catch(e){
+      // Player cancelled — no charge, nothing to unlock.
     }
   }
 
@@ -2280,6 +2487,8 @@
     shopOpenedFromPause=true;
     renderShop();
     renderCoinPacks();
+    renderSkinShop();
+    renderPremiumShop();
     $("shopBg").classList.add('show');
   });
   $("btnPauseSettings").addEventListener('click', ()=>{
@@ -2302,6 +2511,7 @@
     showScreen('homeScreen');
     maybeShowDailyBonus();
     hideSplash();
+    applyEquippedSkin();
     initBilling();
   });
 

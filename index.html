@@ -2234,6 +2234,10 @@
 
   // --- shared leaderboard ---
   function submitLeaderboardScore(){
+    if(window.__lbCloudReady){
+      window.__lbSubmit(state.playerId, state.playerName, state.stats.bestLevel, state.coins).catch(()=>{});
+      return;
+    }
     Store.set('leaderboard:'+state.playerId, JSON.stringify({
       name: state.playerName, bestLevel: state.stats.bestLevel, coins: state.coins, updatedAt: Date.now()
     }), true).catch(()=>{});
@@ -2254,10 +2258,19 @@
   function openLeaderboard(){
     $("leaderboardBg").classList.add('show');
     $("lbList").innerHTML='<div class="lb-empty">Loading…</div>';
-    $("lbNote").textContent = Store.hasCloud
+    const cloudActive = window.__lbCloudReady;
+    $("lbNote").textContent = cloudActive
       ? "Shows the best relic reached by every explorer who's played Rune Triad: Hidden World — your name and best relic are visible to them too."
       : "This device isn't connected to the shared board, so only your own runs appear here.";
     submitLeaderboardScore();
+    if(cloudActive){
+      window.__lbFetchTop(20).then(results=>{
+        renderLeaderboard(results);
+      }).catch(()=>{
+        renderLeaderboard([{ id:state.playerId, name:state.playerName||'Wanderer', bestLevel:state.stats.bestLevel, coins:state.coins }]);
+      });
+      return;
+    }
     Store.list('leaderboard:', true).then(res=>{
       const keys = (res && res.keys) || [];
       if(!keys.length){ renderLeaderboard([]); return; }
@@ -2742,6 +2755,59 @@
       navigator.serviceWorker.register('service-worker.js').catch(()=>{});
     });
   }
+</script>
+
+<script type="module">
+  // Real cross-device leaderboard via Firebase Firestore.
+  // Fill in YOUR_FIREBASE_CONFIG below with your own project's config object
+  // (Firebase Console > Project Settings > General > Your apps > SDK setup).
+  // If this config is left as placeholders, or Firestore can't be reached,
+  // the game silently falls back to the old device-local leaderboard —
+  // nothing breaks, it just won't be cross-device until this is filled in.
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import {
+    getFirestore, doc, setDoc, serverTimestamp,
+    collection, query, orderBy, limit, getDocs
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyABExVPMNVeqZRn1vs3GcbTKFUbOKyzTzo",
+    authDomain: "rune-triad.firebaseapp.com",
+    projectId: "rune-triad",
+    storageBucket: "rune-triad.firebasestorage.app",
+    messagingSenderId: "933751637598",
+    appId: "1:933751637598:web:bb898e140702697b0f16cf"
+  };
+
+  const isConfigured = firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith("YOUR_");
+  let db = null;
+  if(isConfigured){
+    try{
+      const app = initializeApp(firebaseConfig);
+      db = getFirestore(app);
+    }catch(e){ db = null; }
+  }
+
+  window.__lbSubmit = async function(playerId, name, bestLevel, coins){
+    if(!db) throw new Error('firebase not configured');
+    await setDoc(doc(db, 'leaderboard', playerId), {
+      name: name, bestLevel: bestLevel, coins: coins, updatedAt: serverTimestamp()
+    }, { merge: true });
+  };
+
+  window.__lbFetchTop = async function(topN){
+    if(!db) throw new Error('firebase not configured');
+    const q = query(collection(db, 'leaderboard'), orderBy('bestLevel', 'desc'), limit(topN||20));
+    const snap = await getDocs(q);
+    const results = [];
+    snap.forEach(d=>{
+      const v = d.data();
+      results.push({ id:d.id, name:v.name||'Wanderer', bestLevel:v.bestLevel||1, coins:v.coins||0 });
+    });
+    return results;
+  };
+
+  window.__lbCloudReady = isConfigured;
 </script>
 </body>
 </html>

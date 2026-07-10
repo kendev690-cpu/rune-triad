@@ -499,6 +499,24 @@
       radial-gradient(90% 70% at 60% 80%, rgba(0,0,0,0.3), transparent 60%),
       linear-gradient(150deg, #8a6d2e, #5c4419 50%, #362a0f);
   }
+  #board.skin-amethyst .tile-shell{
+    background:
+      radial-gradient(60% 45% at 32% 22%, rgba(255,255,255,0.35), transparent 60%),
+      radial-gradient(90% 70% at 60% 80%, rgba(0,0,0,0.45), transparent 60%),
+      linear-gradient(150deg, #6b3f9e, #45276b 50%, #281645);
+  }
+  #board.skin-frostbite .tile-shell{
+    background:
+      radial-gradient(60% 45% at 32% 22%, rgba(255,255,255,0.5), transparent 60%),
+      radial-gradient(90% 70% at 60% 80%, rgba(0,40,70,0.35), transparent 60%),
+      linear-gradient(150deg, #a9dcec, #5fa8c4 50%, #2d5c72);
+  }
+  #board.skin-ember .tile-shell{
+    background:
+      radial-gradient(60% 45% at 32% 22%, rgba(255,220,150,0.4), transparent 60%),
+      radial-gradient(90% 70% at 60% 80%, rgba(0,0,0,0.45), transparent 60%),
+      linear-gradient(150deg, #b1442e, #7a2418 50%, #3d1009);
+  }
   .layer-4 .tile-shell{ border-color:var(--danger); box-shadow:0 5px 4px rgba(0,0,0,0.5), 0 10px 16px rgba(0,0,0,0.4), 0 0 16px rgba(193,75,75,0.65), inset 0 2px 3px rgba(255,255,255,0.35), inset 0 -6px 10px rgba(0,0,0,0.45); }
   .layer-4 .tile-icon{ color:#f3e9d2; text-shadow:0 0 8px var(--danger), 0 0 3px #fff; }
   .layer-5 .tile-shell{ border-color:#5fb3e0; box-shadow:0 5px 4px rgba(0,0,0,0.5), 0 10px 16px rgba(0,0,0,0.4), 0 0 16px rgba(95,179,224,0.7), inset 0 2px 3px rgba(255,255,255,0.35), inset 0 -6px 10px rgba(0,0,0,0.45); }
@@ -774,6 +792,42 @@
     margin:18px 0 8px; padding-top:14px;
     border-top:1px solid rgba(236,223,192,0.18);
   }
+  .starter-pack{
+    position:relative; overflow:hidden;
+    border-radius:14px; padding:14px 14px 12px;
+    margin:-4px 0 16px;
+    background:linear-gradient(160deg, #3a2560, #6b3f9e 55%, #3a2560);
+    border:1.5px solid #d7ad4f;
+    box-shadow:0 0 18px rgba(215,173,79,0.45);
+    text-align:left;
+  }
+  .starter-pack::before{
+    content:"LIMITED — FIRST PURCHASE ONLY";
+    display:block; font-family:'Cinzel', serif; font-weight:700;
+    font-size:9.5px; letter-spacing:1px; color:#2a1d10;
+    background:var(--gold-brt);
+    padding:3px 8px; border-radius:999px;
+    width:fit-content; margin-bottom:10px;
+  }
+  .starter-pack .sp-title{
+    font-family:'Cinzel Decorative', serif; color:#fff; font-size:16px; margin-bottom:4px;
+  }
+  .starter-pack .sp-contents{
+    font-size:12.5px; color:rgba(255,255,255,0.85); margin-bottom:2px;
+  }
+  .starter-pack .sp-value{
+    font-size:11px; color:rgba(255,255,255,0.55); text-decoration:line-through; margin-bottom:10px;
+  }
+  .starter-pack .sp-buy{
+    display:block; width:100%;
+    font-family:'Cinzel', serif; font-weight:700; letter-spacing:0.5px;
+    background:linear-gradient(180deg, var(--gold-brt), var(--gold));
+    color:#2a1d10; border:none; border-radius:999px;
+    padding:10px; font-size:14px; cursor:pointer;
+    box-shadow:0 3px 0 #8a6a24;
+  }
+  .starter-pack .sp-buy:active{ transform:translateY(2px); box-shadow:0 1px 0 #8a6a24; }
+  .starter-pack .sp-buy:disabled{ opacity:0.5; cursor:default; }
   .coinpack-list{ margin-bottom:16px; }
   .coinpack-row{
     display:flex; align-items:center; gap:10px;
@@ -953,6 +1007,7 @@
   <div class="modal">
     <div class="glyph">🛒</div>
     <h2>Rune Shop</h2>
+    <div id="starterPackWrap"></div>
     <p class="shop-note">Stock up before your next relic. Purchases here apply only to the relic you're about to start.</p>
     <div class="shop-coin-bar"><span class="icon">💰</span> <span id="shopCoinCount">0</span> gold</div>
     <div class="shop-list" id="shopList"></div>
@@ -1459,6 +1514,7 @@
     shopStock:{ undo:0, shuffle:0, bomb:0, hint:0 },
     ownedSkins:['skin_default'], equippedSkin:'skin_default',
     isPremium:false,
+    starterPackBought:false,
     stats:{ relicsCleared:0, bestLevel:1, totalMatches:0, totalCoinsEarned:0 }
   };
   let layers=[], tray=[], history=[];
@@ -1484,6 +1540,7 @@
           if(p.ownedSkins){ state.ownedSkins = p.ownedSkins; }
           if(p.equippedSkin){ state.equippedSkin = p.equippedSkin; }
           if(p.isPremium){ state.isPremium = p.isPremium; }
+          if(p.starterPackBought){ state.starterPackBought = p.starterPackBought; }
           if(p.stats){ state.stats = Object.assign(state.stats, p.stats); }
         }catch(e){}
       }
@@ -1505,6 +1562,7 @@
       shopStock:state.shopStock,
       ownedSkins:state.ownedSkins, equippedSkin:state.equippedSkin,
       isPremium:state.isPremium,
+      starterPackBought:state.starterPackBought,
       stats:state.stats
     }), false).catch(()=>{});
   }
@@ -2251,6 +2309,7 @@
     renderCoinPacks();
     renderSkinShop();
     renderPremiumShop();
+    renderStarterPack();
     $("shopBg").classList.add('show');
   });
 
@@ -2266,8 +2325,13 @@
     { id:'skin_obsidian', label:'Obsidian',         className:'skin-obsidian',color:'#171129', fallbackPrice:'$1.99' },
     { id:'skin_jade',      label:'Jade',            className:'skin-jade',    color:'#1c4a37', fallbackPrice:'$1.99' },
     { id:'skin_gilded',    label:'Gilded',          className:'skin-gilded',  color:'#5c4419', fallbackPrice:'$2.99' },
+    { id:'skin_amethyst',  label:'Amethyst',        className:'skin-amethyst',color:'#45276b', fallbackPrice:'$1.99' },
+    { id:'skin_frostbite', label:'Frostbite',       className:'skin-frostbite',color:'#5fa8c4', fallbackPrice:'$1.99' },
+    { id:'skin_ember',     label:'Ember',           className:'skin-ember',   color:'#7a2418', fallbackPrice:'$2.99' },
   ];
+  const SKIN_BUNDLE = { id:'skin_bundle_all', label:'All Skins Bundle', fallbackPrice:'$7.99' };
   const PREMIUM_PASS = { id:'premium_no_ads', label:'Premium Pass', fallbackPrice:'$3.99' };
+  const STARTER_PACK = { id:'starter_pack', label:'Starter Pack', coins:800, skinId:'skin_obsidian', fallbackPrice:'$1.99' };
   const BILLING_METHOD = 'https://play.google.com/billing';
   let billingService = null;
   let billingDetails = {}; // id -> { title, price: {value, currency} }
@@ -2275,19 +2339,19 @@
 
   async function initBilling(){
     try{
-      if(!window.getDigitalGoodsService){ renderCoinPacks(); renderSkinShop(); renderPremiumShop(); return; }
+      if(!window.getDigitalGoodsService){ renderCoinPacks(); renderSkinShop(); renderPremiumShop(); renderStarterPack(); return; }
       billingService = await window.getDigitalGoodsService(BILLING_METHOD);
-      if(!billingService){ renderCoinPacks(); renderSkinShop(); renderPremiumShop(); return; }
+      if(!billingService){ renderCoinPacks(); renderSkinShop(); renderPremiumShop(); renderStarterPack(); return; }
       const skinIds = SKINS.filter(s=>!s.free).map(s=>s.id);
-      const ids = COIN_PACKS.map(p=>p.id).concat(skinIds).concat([PREMIUM_PASS.id]);
+      const ids = COIN_PACKS.map(p=>p.id).concat(skinIds).concat([PREMIUM_PASS.id, SKIN_BUNDLE.id, STARTER_PACK.id]);
       const details = await billingService.getDetails(ids);
       details.forEach(d=>{ billingDetails[d.itemId] = d; });
       billingReady = true;
-      // Credit/consume any coin pack purchase that completed but never got
-      // acknowledged (e.g. app was killed mid-purchase), and restore ownership
-      // of any skin or the premium pass already bought (both are never
-      // consumed, so they persist here forever once purchased — this is how
-      // we detect "already owns it").
+      // Credit/consume any coin pack (or starter pack) purchase that completed
+      // but never got acknowledged (e.g. app was killed mid-purchase), and
+      // restore ownership of any skin, the bundle, or the premium pass already
+      // bought (those are never consumed, so they persist here forever once
+      // purchased — this is how we detect "already owns it").
       const pending = await billingService.listPurchases();
       for(const purchase of pending){
         const pack = COIN_PACKS.find(p=>p.id===purchase.itemId);
@@ -2295,6 +2359,21 @@
           state.coins += pack.coins;
           saveProgress();
           await billingService.consume(purchase.purchaseToken);
+          continue;
+        }
+        if(purchase.itemId===STARTER_PACK.id){
+          if(!state.starterPackBought){
+            state.coins += STARTER_PACK.coins;
+            if(!state.ownedSkins.includes(STARTER_PACK.skinId)) state.ownedSkins.push(STARTER_PACK.skinId);
+            state.starterPackBought = true;
+            saveProgress();
+          }
+          await billingService.consume(purchase.purchaseToken);
+          continue;
+        }
+        if(purchase.itemId===SKIN_BUNDLE.id){
+          SKINS.forEach(s=>{ if(!state.ownedSkins.includes(s.id)) state.ownedSkins.push(s.id); });
+          saveProgress();
           continue;
         }
         const skin = SKINS.find(s=>s.id===purchase.itemId);
@@ -2314,6 +2393,7 @@
     renderCoinPacks();
     renderSkinShop();
     renderPremiumShop();
+    renderStarterPack();
   }
 
   function renderCoinPacks(){
@@ -2379,6 +2459,24 @@
     const list = $("skinList");
     if(!list) return;
     list.innerHTML='';
+
+    const allOwned = SKINS.every(s=>s.free || state.ownedSkins.includes(s.id));
+    if(!allOwned){
+      const detail = billingDetails[SKIN_BUNDLE.id];
+      const priceLabel = detail ? (detail.price.value+' '+detail.price.currency) : SKIN_BUNDLE.fallbackPrice;
+      const row=document.createElement('div');
+      row.className='shop-row';
+      row.innerHTML =
+        '<span class="ic">🎁</span>'+
+        '<span class="info">'+
+          '<span class="name">'+SKIN_BUNDLE.label+'</span>'+
+          '<span class="owned">Unlocks every skin at once — best value</span>'+
+        '</span>'+
+        '<button class="buy-btn"'+(billingReady?'':' disabled')+'>'+priceLabel+'</button>';
+      row.querySelector('.buy-btn').addEventListener('click', buySkinBundle);
+      list.appendChild(row);
+    }
+
     SKINS.forEach(skin=>{
       const owned = skin.free || state.ownedSkins.includes(skin.id);
       const equipped = state.equippedSkin===skin.id;
@@ -2400,6 +2498,23 @@
       row.querySelector('.buy-btn').addEventListener('click', ()=>buyOrEquipSkin(skin));
       list.appendChild(row);
     });
+  }
+
+  async function buySkinBundle(){
+    if(!billingReady) return;
+    try{
+      const request = new PaymentRequest(
+        [{ supportedMethods: BILLING_METHOD, data:{ sku: SKIN_BUNDLE.id } }],
+        { total:{ label: SKIN_BUNDLE.label, amount:{ currency:'USD', value:'0' } } }
+      );
+      const response = await request.show();
+      await response.complete('success');
+      SKINS.forEach(s=>{ if(!state.ownedSkins.includes(s.id)) state.ownedSkins.push(s.id); });
+      saveProgress();
+      renderSkinShop();
+    } catch(e){
+      // Player cancelled — no charge, nothing to unlock.
+    }
   }
 
   async function buyOrEquipSkin(skin){
@@ -2427,6 +2542,48 @@
       saveProgress();
       applyEquippedSkin();
       renderSkinShop();
+    } catch(e){
+      // Player cancelled — no charge, nothing to unlock.
+    }
+  }
+
+  function renderStarterPack(){
+    const wrap = $("starterPackWrap");
+    if(!wrap) return;
+    if(state.starterPackBought){ wrap.innerHTML=''; return; }
+    const detail = billingDetails[STARTER_PACK.id];
+    const priceLabel = detail ? (detail.price.value+' '+detail.price.currency) : STARTER_PACK.fallbackPrice;
+    const skin = SKINS.find(s=>s.id===STARTER_PACK.skinId);
+    wrap.innerHTML =
+      '<div class="starter-pack">'+
+        '<div class="sp-title">Starter Pack</div>'+
+        '<div class="sp-contents">'+STARTER_PACK.coins.toLocaleString()+' gold + '+(skin?skin.label:'a rune skin')+' skin</div>'+
+        '<div class="sp-value">Worth more separately</div>'+
+        '<button class="sp-buy"'+(billingReady?'':' disabled')+'>'+priceLabel+' — one time only</button>'+
+      '</div>';
+    wrap.querySelector('.sp-buy').addEventListener('click', buyStarterPack);
+  }
+
+  async function buyStarterPack(){
+    if(!billingReady || state.starterPackBought) return;
+    try{
+      const request = new PaymentRequest(
+        [{ supportedMethods: BILLING_METHOD, data:{ sku: STARTER_PACK.id } }],
+        { total:{ label: STARTER_PACK.label, amount:{ currency:'USD', value:'0' } } }
+      );
+      const response = await request.show();
+      await response.complete('success');
+      state.coins += STARTER_PACK.coins;
+      if(!state.ownedSkins.includes(STARTER_PACK.skinId)) state.ownedSkins.push(STARTER_PACK.skinId);
+      state.starterPackBought = true;
+      state.stats.totalCoinsEarned += STARTER_PACK.coins;
+      saveProgress();
+      await billingService.consume(response.details.purchaseToken);
+      renderStarterPack();
+      renderSkinShop();
+      renderShop();
+      $("shopCoinCount").textContent = state.coins;
+      refreshHomeBadge();
     } catch(e){
       // Player cancelled — no charge, nothing to unlock.
     }
@@ -2539,6 +2696,7 @@
     renderCoinPacks();
     renderSkinShop();
     renderPremiumShop();
+    renderStarterPack();
     $("shopBg").classList.add('show');
   });
   $("btnPauseSettings").addEventListener('click', ()=>{

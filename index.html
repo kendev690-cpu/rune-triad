@@ -2261,12 +2261,13 @@
     const cloudActive = window.__lbCloudReady;
     $("lbNote").textContent = cloudActive
       ? "Shows the best relic reached by every explorer who's played Rune Triad: Hidden World — your name and best relic are visible to them too."
-      : "This device isn't connected to the shared board, so only your own runs appear here.";
+      : "This device isn't connected to the shared board, so only your own runs appear here. [debug: "+(window.__lbInitError||'no error captured')+"]";
     submitLeaderboardScore();
     if(cloudActive){
       window.__lbFetchTop(20).then(results=>{
         renderLeaderboard(results);
       }).catch(()=>{
+        $("lbNote").textContent = "Shared board fetch failed. [debug: "+(window.__lbInitError||'unknown')+"]";
         renderLeaderboard([{ id:state.playerId, name:state.playerName||'Wanderer', bestLevel:state.stats.bestLevel, coins:state.coins }]);
       });
       return;
@@ -2781,33 +2782,46 @@
 
   const isConfigured = firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith("YOUR_");
   let db = null;
+  window.__lbInitError = null;
   if(isConfigured){
     try{
       const app = initializeApp(firebaseConfig);
       db = getFirestore(app);
-    }catch(e){ db = null; }
+    }catch(e){ db = null; window.__lbInitError = 'init: '+(e && e.message ? e.message : String(e)); }
+  } else {
+    window.__lbInitError = 'config still has placeholder values';
   }
 
   window.__lbSubmit = async function(playerId, name, bestLevel, coins){
     if(!db) throw new Error('firebase not configured');
-    await setDoc(doc(db, 'leaderboard', playerId), {
-      name: name, bestLevel: bestLevel, coins: coins, updatedAt: serverTimestamp()
-    }, { merge: true });
+    try{
+      await setDoc(doc(db, 'leaderboard', playerId), {
+        name: name, bestLevel: bestLevel, coins: coins, updatedAt: serverTimestamp()
+      }, { merge: true });
+    }catch(e){
+      window.__lbInitError = 'submit: '+(e && e.message ? e.message : String(e));
+      throw e;
+    }
   };
 
   window.__lbFetchTop = async function(topN){
     if(!db) throw new Error('firebase not configured');
-    const q = query(collection(db, 'leaderboard'), orderBy('bestLevel', 'desc'), limit(topN||20));
-    const snap = await getDocs(q);
-    const results = [];
-    snap.forEach(d=>{
-      const v = d.data();
-      results.push({ id:d.id, name:v.name||'Wanderer', bestLevel:v.bestLevel||1, coins:v.coins||0 });
-    });
-    return results;
+    try{
+      const q = query(collection(db, 'leaderboard'), orderBy('bestLevel', 'desc'), limit(topN||20));
+      const snap = await getDocs(q);
+      const results = [];
+      snap.forEach(d=>{
+        const v = d.data();
+        results.push({ id:d.id, name:v.name||'Wanderer', bestLevel:v.bestLevel||1, coins:v.coins||0 });
+      });
+      return results;
+    }catch(e){
+      window.__lbInitError = 'fetch: '+(e && e.message ? e.message : String(e));
+      throw e;
+    }
   };
 
-  window.__lbCloudReady = isConfigured;
+  window.__lbCloudReady = isConfigured && !!db;
 </script>
 </body>
 </html>

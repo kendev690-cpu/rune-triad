@@ -1921,6 +1921,11 @@
     if(!boardAlive() && tray.length===0){
       clearSession();
       winLevel();
+      adBreak({
+    type: 'start',
+    name: 'next-level-ad',
+    beforeAd: () => { console.log("Iklan level muncul"); },
+    afterAd: () => { console.log("Iklan ditutup"); }
       return;
     }
     if(tray.length>=TRAY_CAP){

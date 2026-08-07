@@ -1901,12 +1901,17 @@
     saveSession();
     if(!boardAlive() && tray.length===0){
       clearSession();
+      let advanced = false;
+      const advance = () => { if(advanced) return; advanced = true; winLevel(); };
+
+      const safetyTimer = setTimeout(advance, 5000); // never stay stuck more than 5s
+
       adBreak({
         type: 'next',
         name: 'level-complete-ad',
         beforeAd: () => { SoundEngine.pauseMusicOnly(); },
         afterAd: () => { SoundEngine.resumeMusicOnly(); },
-        adBreakDone: () => { winLevel(); }
+        adBreakDone: () => { clearTimeout(safetyTimer); advance(); }
       });
       return;
     }

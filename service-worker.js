@@ -1,7 +1,7 @@
 // Rune Triad: Hidden World — service worker
 // Cache-first strategy for the single-file game shell so it works offline / launches instantly.
 
-const CACHE_NAME = 'rune-triad-v1';
+const CACHE_NAME = 'rune-triad-v2';
 const CORE_ASSETS = [
   './',
   './index.html',
